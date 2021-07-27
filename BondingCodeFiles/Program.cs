@@ -1,41 +1,55 @@
-﻿using System;
+﻿using CommandLine;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Resources;
+using System.Threading.Tasks;
 
 namespace ProgectCodeLines
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
-            MainWork();
-
-            Console.ReadKey();
+           
+            return await Parser.Default.ParseArguments<CommandLineOptions>(args)
+                .MapResult(async (CommandLineOptions opts) =>
+                {
+                    return Run(opts.Progect);
+                },
+                errs => Task.FromResult(-1)); // Invalid arguments
         }
 
-        private static void MainWork()
+        private static int Run(string inputFolderPath)
         {
-            string folderPath = $@"C:\1.Developing\С#\ИнстрСредства ИС\PrimaryDataAnalysis7";
-            string outputFileName = "Code of progect.rtf";
-            string outputPath = Path.Combine(folderPath, outputFileName);
-            string extensionPattern = "*.cs";
+            if (Directory.Exists(inputFolderPath) == false)
+            {
+                Console.WriteLine("This path does not exist");
+                return -1;
+            }
 
-            List<string> ignoreList = new List<string>()
+            const string extensionPattern = "*.cs";
+
+            List<string> ignoredItems = new List<string>()
             {
                 @"\Debug\",
                 "Properties",
                 ".Designer.",
             };
 
-            var files = Directory.GetFiles(folderPath, extensionPattern, SearchOption.AllDirectories).ToList();
+            List<string> files = Directory.GetFiles(inputFolderPath, extensionPattern, SearchOption.AllDirectories).ToList();
 
-            files.RemoveAll(file => ignoreList.Exists(ignore => file.Contains(ignore)));
+            files.RemoveAll(file => ignoredItems.Any(ignore => file.Contains(ignore)));
 
-            FindCodeLinesCount(files);
+            int codeLinesCount = FindCodeLinesCount(files);
+
+            Console.WriteLine($"The project contains {codeLinesCount} lines");
+
+            return 0;
         }
 
-        private static void FindCodeLinesCount(List<string> files)
+        private static int FindCodeLinesCount(List<string> files)
         {
             int progectCodeLines = 0;
             foreach (var s in files)
@@ -53,7 +67,7 @@ namespace ProgectCodeLines
                     progectCodeLines += linesCounter;
                 }
             }
-            Console.WriteLine($"В проекте {progectCodeLines} строк");
+            return progectCodeLines;
         }
     }
 }
