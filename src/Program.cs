@@ -10,6 +10,8 @@ namespace ProgectCodeLines
 {
     class Program
     {
+        private static string extensionPattern = "*.cs";
+
         static async Task<int> Main(string[] args)
         {
            
@@ -29,18 +31,11 @@ namespace ProgectCodeLines
                 return -1;
             }
 
-            const string extensionPattern = "*.cs";
-
-            List<string> ignoredItems = new List<string>()
-            {
-                @"\Debug\",
-                "Properties",
-                ".Designer.",
-            };
+            List<string> ignoredItems = GetIgnoreList().ToList();
 
             List<string> files = Directory.GetFiles(inputFolderPath, extensionPattern, SearchOption.AllDirectories).ToList();
 
-            files.RemoveAll(file => ignoredItems.Any(ignore => file.Contains(ignore)));
+            files.RemoveAll(file => ignoredItems.Any(ignoreItem => file.Contains(ignoreItem)));
 
             int codeLinesCount = FindCodeLinesCount(files);
 
@@ -48,6 +43,18 @@ namespace ProgectCodeLines
 
             return 0;
         }
+
+
+        private static IEnumerable<string> GetIgnoreList()
+        {
+            return new List<string>()
+            {
+                @"Debug",
+                "Properties",
+                ".Designer.",
+            };
+        }
+
 
         private static int FindCodeLinesCount(List<string> files)
         {
