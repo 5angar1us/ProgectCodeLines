@@ -1,80 +1,82 @@
 ﻿using CommandLine;
+using ProgectCodeLines.Models;
+using Spectre.Console;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Resources;
 using System.Threading.Tasks;
 
 namespace ProgectCodeLines
 {
+
     class Program
     {
-        private static string extensionPattern = "*.cs";
+        private static HashSet<string> ExtensionPatterns = new List<string>() { ".cs", ".ts" }.ToHashSet();
+
+        private static HashSet<string> ignoredFolders = new List<string>()
+        {
+            @"Debug",
+            ".git",
+            "Properties",
+            ".Designer.",
+            "Build",
+            "dist",
+            "node_modules"
+        }.ToHashSet();
 
         static async Task<int> Main(string[] args)
         {
-           
             return await Parser.Default.ParseArguments<CommandLineOptions>(args)
                 .MapResult(async (CommandLineOptions opts) =>
                 {
-                    return Run(opts.Progect);
-                },
-                errs => Task.FromResult(-1)); // Invalid arguments
-        }
+                    var errors = new List<string>();
+                    var results = new List<FolderCountLinesData>();
+                    var allDetails = new List<FolderCountLinesData>();
 
-        private static int Run(string inputFolderPath)
-        {
-            if (Directory.Exists(inputFolderPath) == false)
-            {
-                Console.WriteLine("This path does not exist");
-                return -1;
-            }
-
-            List<string> ignoredItems = GetIgnoreList().ToList();
-
-            List<string> files = Directory.GetFiles(inputFolderPath, extensionPattern, SearchOption.AllDirectories).ToList();
-
-            files.RemoveAll(file => ignoredItems.Any(ignoreItem => file.Contains(ignoreItem)));
-
-            int codeLinesCount = FindCodeLinesCount(files);
-
-            Console.WriteLine($"The project contains {codeLinesCount} lines");
-
-            return 0;
-        }
-
-
-        private static IEnumerable<string> GetIgnoreList()
-        {
-            return new List<string>()
-            {
-                @"Debug",
-                "Properties",
-                ".Designer.",
-            };
-        }
-
-
-        private static int FindCodeLinesCount(List<string> files)
-        {
-            int progectCodeLines = 0;
-            foreach (var s in files)
-            {
-                using (var sr = new StreamReader(s))
-                {
-
-                    int linesCounter = 0;
-                    string temp;
-                    while (!sr.EndOfStream)
+                    if (!string.IsNullOrEmpty(opts.Directory))
                     {
-                        temp = sr.ReadLine();
-                        linesCounter++;
+                        if (Directory.Exists(opts.Directory))
+                        {
+                            try
+                            {
+                                var result = DirectoryProcessor.ProcessDirectory(opts.Directory, ignoredFolders, new HashSet<string>(), ExtensionPatterns);
+                                results.Add(result);
+                            }
+                            catch (Exception ex)
+                            {
+                                errors.Add($"Error processing directory '{opts.Directory}': {ex.Message}");
+                            }
+                        }
+                        else
+                        {
+                            errors.Add($"Directory path does not exist: {opts.Directory}");
+                        }
                     }
-                    progectCodeLines += linesCounter;
-                }
-            }
-            return progectCodeLines;
+
+                    if (results.Count > 0)
+                    {
+                        ResultDisplayer.DisplayHierarchy(results);
+                    }
+
+                    if (errors.Count > 0)
+                    {
+                        AnsiConsole.MarkupLine("[red]Errors:[/]");
+                        foreach (var error in errors)
+                        {
+                            AnsiConsole.MarkupLine($"[red]{error}[/]");
+                        }
+                    }
+
+                    if (results.Count == 0)
+                    {
+                        AnsiConsole.MarkupLine("[red]No valid inputs provided.[/]");
+                        return -1;
+                    }
+
+                    return errors.Count > 0 ? -1 : 0;
+                },
+                errs => Task.FromResult(-1));
         }
     }
 }

@@ -2,11 +2,9 @@
 
 namespace ProgectCodeLines
 {
-   
-        public class CommandLineOptions
-        {
-            [Value(index: 0, Required = true, HelpText = "Progect file Path to analyze.")]
-            public string Progect { get; set; }
-        }
-    
+    public class CommandLineOptions
+    {
+        [Option('d', "directory", HelpText = "Path to the directory to analyze.")]
+        public string Directory { get; set; }
+    }
 }
